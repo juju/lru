@@ -83,4 +83,3 @@ func (lru *LRU) Peek(key interface{}) (interface{}, bool) {
 	}
 	return nil, false
 }
-

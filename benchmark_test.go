@@ -164,10 +164,9 @@ func benchGet(c *gc.C, size int) {
 		cache.Add(i, i)
 		lookups[i] = i
 	}
-	rand.Shuffle(len(lookups), func(i, j int) {lookups[i], lookups[j] = lookups[j], lookups[i]})
+	rand.Shuffle(len(lookups), func(i, j int) { lookups[i], lookups[j] = lookups[j], lookups[i] })
 	c.ResetTimer()
 	for i := 0; i < c.N; i++ {
 		cache.Get(lookups[i%size])
 	}
 }
-
