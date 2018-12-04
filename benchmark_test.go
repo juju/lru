@@ -72,6 +72,7 @@ func (*BenchmarkSuite) BenchmarkAddAndEvict2000000(c *gc.C) {
 }
 
 func benchAddAndEvict(c *gc.C, size int) {
+
 	cache := lru.New(size)
 	for i := 0; i < c.N; i++ {
 		cache.Add(i, i)
