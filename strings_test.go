@@ -6,6 +6,7 @@ package lru_test
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"unsafe"
 
 	gc "gopkg.in/check.v1"
@@ -85,6 +86,43 @@ func (*StringsSuite) TestInternAbuse(c *gc.C) {
 		c.Assert(v, gc.Equals, k)
 	}
 	c.Check(cache.Len(), gc.Equals, size)
+}
+
+func (*StringsSuite) TestInternMultithreaded(c *gc.C) {
+	const totalKeys = 100000
+	const totalUniqueKeys = 1000
+	const threads = 10
+	keys := make([]string, totalKeys)
+	for i := 0; i < totalKeys; i++ {
+		keys[i] = fmt.Sprint((i % totalUniqueKeys) + 1000000)
+	}
+	var size int = totalUniqueKeys * 0.75
+	c.Logf("using size: %d", size)
+	cache := lru.NewStringCache(size)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	for i := 0; i < threads; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			localKeys := keys[:]
+			rand.Shuffle(c.N, func(i, j int) { localKeys[j], localKeys[i] = localKeys[i], localKeys[j] })
+			for _, k := range keys {
+				mu.Lock()
+				v := cache.Intern(k)
+				mu.Unlock()
+				if v != k {
+					c.Errorf("key %q mapped to %q", k, v)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	c.Check(cache.Len(), gc.Equals, size)
+	hitCount := cache.HitCounts()
+	c.Logf("hit count: %# v", hitCount)
+	c.Check(hitCount.Hit+hitCount.Miss, gc.Equals, int64(totalKeys*threads))
 }
 
 var _ = gc.Suite(&BenchmarkStrings{})
