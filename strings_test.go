@@ -88,6 +88,23 @@ func (*StringsSuite) TestInternAbuse(c *gc.C) {
 	c.Check(cache.Len(), gc.Equals, size)
 }
 
+func (*StringsSuite) TestHitCount(c *gc.C) {
+	cache := lru.NewStringCache(5)
+	cache.Intern("a")
+	cache.Intern("b")
+	cache.Intern("c")
+	cache.Intern("d")
+	cache.Intern("d")
+	cache.Intern("d")
+	cache.Intern("d")
+	c.Check(cache.HitCounts(), gc.Equals, lru.HitCounts{Hit: 3, Miss: 4})
+	cache.Intern("e")
+	cache.Intern("f")
+	cache.Intern("a")
+	// we overflowed, so everything misses
+	c.Check(cache.HitCounts(), gc.Equals, lru.HitCounts{Hit: 3, Miss: 7})
+}
+
 func (*StringsSuite) TestInternMultithreaded(c *gc.C) {
 	const totalKeys = 100000
 	const totalUniqueKeys = 1000
