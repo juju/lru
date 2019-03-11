@@ -128,7 +128,7 @@ func (*StringsSuite) TestInternMultithreaded(c *gc.C) {
 			defer wg.Done()
 			localKeys := keys[:]
 			rand.Shuffle(c.N, func(i, j int) { localKeys[j], localKeys[i] = localKeys[i], localKeys[j] })
-			for _, k := range keys {
+			for _, k := range localKeys {
 				mu.Lock()
 				v := cache.Intern(k)
 				mu.Unlock()
@@ -223,7 +223,7 @@ func benchmarkIntern(c *gc.C, size int, randomize bool) {
 	strs := make([]string, c.N)
 	for i := 0; i < c.N; i++ {
 		// We want reasonably long strings
-		strs[i] = fmt.Sprint(i + 10000000)
+		strs[i] = fmt.Sprint(i + 1e7)
 	}
 	if randomize {
 		rand.Shuffle(c.N, func(i, j int) { strs[j], strs[i] = strs[i], strs[j] })
@@ -238,6 +238,8 @@ func benchmarkIntern(c *gc.C, size int, randomize bool) {
 		expectLen = c.N
 	}
 	c.Assert(cache.Len(), gc.Equals, expectLen)
+	c.StopTimer()
+	c.Assert(cache.Validate(), gc.IsNil)
 }
 
 func (*BenchmarkStrings) BenchmarkIntern0000010(c *gc.C) {
@@ -316,7 +318,10 @@ func (*BenchmarkStrings) BenchmarkInternMemSize(c *gc.C) {
 	rand.Shuffle(c.N, func(i, j int) { keys[j], keys[i] = keys[i], keys[j] })
 	c.ResetTimer()
 	cache := lru.NewStringCache(c.N)
+	//cache.Prealloc()
 	for i := 0; i < c.N; i++ {
 		cache.Intern(keys[i])
 	}
+	c.StopTimer()
+	c.Assert(cache.Validate(), gc.IsNil)
 }

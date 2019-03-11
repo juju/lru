@@ -57,9 +57,12 @@ type stringElem struct {
 }
 
 func (sc *StringCache) init() {
-	sc.values = make(map[string]uint32, sc.maxSize)
-	// TODO: (jam) do dynamic allocation rather than preallocating max size
-	sc.buf = make([]stringElem, sc.maxSize+1)
+	initialSize := sc.maxSize + 1
+	if initialSize > 100 {
+		initialSize = 101
+	}
+	sc.values = make(map[string]uint32, initialSize)
+	sc.buf = make([]stringElem, initialSize)
 	sc.size = 0
 	sc.root = &sc.buf[0]
 	sc.root.next = 0
@@ -129,6 +132,22 @@ func (sc *StringCache) Validate() error {
 	return nil
 }
 
+func (sc *StringCache) realloc(nextSize int) {
+	if nextSize == 0 {
+		// We save 1 slot at the beginning for root, this makes 'offset = 0' an invalid value
+		// which makes debugging much easier, and we need start and end pointers anyway.
+		nextSize = (len(sc.buf) - 1) * 3
+		if nextSize > sc.maxSize {
+			nextSize = sc.maxSize
+		}
+		nextSize++ // reserve root = buf[0]
+	}
+	newBuf := make([]stringElem, nextSize)
+	copy(newBuf, sc.buf)
+	sc.buf = newBuf
+	sc.root = &newBuf[0]
+}
+
 // Intern takes a string, and returns either the cached copy of the string, or
 // caches the string and returns it back.  It also updates how recently the
 // string was seen, so that strings aren't cached forever.
@@ -144,6 +163,9 @@ func (sc *StringCache) Intern(v string) string {
 	if sc.size < sc.maxSize {
 		sc.size++
 		elem = uint32(sc.size)
+		if sc.size >= len(sc.buf) {
+			sc.realloc(0)
+		}
 		sc.buf[elem].value = v
 	} else {
 		elem = sc.root.prev
@@ -179,4 +201,15 @@ func (sc *StringCache) moveToFront(elem uint32) {
 	e.next = next
 	sc.root.next = elem
 	sc.buf[next].prev = elem
+}
+
+// Prealloc allocates a maxSize buffer immediately, rather than slowly growing
+// the buffer to maxSize.
+func (sc *StringCache) Prealloc() {
+	values := make(map[string]uint32, sc.maxSize)
+	for k, v := range sc.values {
+		values[k] = v
+	}
+	sc.values = values
+	sc.realloc(sc.maxSize + 1)
 }
