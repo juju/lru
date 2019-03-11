@@ -1,4 +1,4 @@
-// Copyright 2018 Canonical Ltd.
+// Copyright 2019 Canonical Ltd.
 // Licensed under the LGPLv3, see LICENCE file for details.
 
 package lru_test
@@ -38,10 +38,12 @@ func (*StringsSuite) TestIntern(c *gc.C) {
 	str2 := fmt.Sprintf("foo%s", "bar")
 	c.Check(isSameStr(str1, str2), gc.Equals, false)
 
-	cache := lru.NewStringCache(100)
+	cache := lru.NewStringCache(10)
 	str3 := cache.Intern(str1)
+	c.Assert(cache.Validate(), gc.IsNil)
 	c.Check(isSameStr(str1, str3), gc.Equals, true)
 	str4 := cache.Intern(str2)
+	c.Assert(cache.Validate(), gc.IsNil)
 	c.Check(isSameStr(str1, str4), gc.Equals, true)
 	c.Check(cache.Len(), gc.Equals, 1)
 	c.Check(cache.Contains(str1), gc.Equals, true)
@@ -86,6 +88,7 @@ func (*StringsSuite) TestInternAbuse(c *gc.C) {
 		c.Assert(v, gc.Equals, k)
 	}
 	c.Check(cache.Len(), gc.Equals, size)
+	c.Assert(cache.Validate(), gc.IsNil)
 }
 
 func (*StringsSuite) TestHitCount(c *gc.C) {
@@ -103,6 +106,7 @@ func (*StringsSuite) TestHitCount(c *gc.C) {
 	cache.Intern("a")
 	// we overflowed, so everything misses
 	c.Check(cache.HitCounts(), gc.Equals, lru.HitCounts{Hit: 3, Miss: 7})
+	c.Assert(cache.Validate(), gc.IsNil)
 }
 
 func (*StringsSuite) TestInternMultithreaded(c *gc.C) {
@@ -140,6 +144,7 @@ func (*StringsSuite) TestInternMultithreaded(c *gc.C) {
 	hitCount := cache.HitCounts()
 	c.Logf("hit count: %# v", hitCount)
 	c.Check(hitCount.Hit+hitCount.Miss, gc.Equals, int64(totalKeys*threads))
+	c.Assert(cache.Validate(), gc.IsNil)
 }
 
 var _ = gc.Suite(&BenchmarkStrings{})
