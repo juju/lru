@@ -136,7 +136,7 @@ func (sc *StringCache) realloc(nextSize int) {
 	if nextSize == 0 {
 		// We save 1 slot at the beginning for root, this makes 'offset = 0' an invalid value
 		// which makes debugging much easier, and we need start and end pointers anyway.
-		nextSize = (len(sc.buf) - 1) * 3
+		nextSize = (len(sc.buf) - 1) * 2
 		if nextSize > sc.maxSize {
 			nextSize = sc.maxSize
 		}
@@ -204,7 +204,8 @@ func (sc *StringCache) moveToFront(elem uint32) {
 }
 
 // Prealloc allocates a maxSize buffer immediately, rather than slowly growing
-// the buffer to maxSize.
+// the buffer to maxSize. If you know that you need the full buffer size, this
+// can make initial loading of the buffer 2-3x faster.
 func (sc *StringCache) Prealloc() {
 	values := make(map[string]uint32, sc.maxSize)
 	for k, v := range sc.values {

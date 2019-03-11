@@ -91,6 +91,19 @@ func (*StringsSuite) TestInternAbuse(c *gc.C) {
 	c.Assert(cache.Validate(), gc.IsNil)
 }
 
+func (*StringsSuite) TestInternAndPrealloc(c *gc.C) {
+	str1 := fmt.Sprintf("foo%s", "bar")
+	str2 := fmt.Sprintf("foo%s", "bar")
+	c.Check(isSameStr(str1, str2), gc.Equals, false)
+	cache := lru.NewStringCache(10)
+	str3 := cache.Intern(str1)
+	c.Assert(cache.Validate(), gc.IsNil)
+	c.Check(isSameStr(str1, str3), gc.Equals, true)
+	cache.Prealloc()
+	str4 := cache.Intern(str2)
+	c.Check(isSameStr(str1, str4), gc.Equals, true)
+}
+
 func (*StringsSuite) TestHitCount(c *gc.C) {
 	cache := lru.NewStringCache(5)
 	cache.Intern("a")
@@ -229,6 +242,7 @@ func benchmarkIntern(c *gc.C, size int, randomize bool) {
 		rand.Shuffle(c.N, func(i, j int) { strs[j], strs[i] = strs[i], strs[j] })
 	}
 	cache := lru.NewStringCache(size)
+	cache.Prealloc()
 	c.ResetTimer()
 	for i := 0; i < c.N; i++ {
 		cache.Intern(strs[i])
@@ -318,7 +332,7 @@ func (*BenchmarkStrings) BenchmarkInternMemSize(c *gc.C) {
 	rand.Shuffle(c.N, func(i, j int) { keys[j], keys[i] = keys[i], keys[j] })
 	c.ResetTimer()
 	cache := lru.NewStringCache(c.N)
-	//cache.Prealloc()
+	cache.Prealloc()
 	for i := 0; i < c.N; i++ {
 		cache.Intern(keys[i])
 	}
