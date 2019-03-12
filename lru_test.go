@@ -56,6 +56,14 @@ func simpleFullCache() *lru.LRU {
 	return cache
 }
 
+func (s *LRUSuite) TestLRUOne(c *gc.C) {
+	cache := lru.New(1)
+	cache.Add(1, "a")
+	cache.Add(2, "b")
+	checkPeekMissing(c, cache, 1)
+	checkPeekExists(c, cache, 2, "b")
+}
+
 func (s *LRUSuite) TestLRUAdd(c *gc.C) {
 	cache := lru.New(128)
 	cache.Add("foo", "bar")
