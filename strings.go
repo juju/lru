@@ -27,17 +27,14 @@ type StringCache struct {
 	root      *stringElem
 }
 
-const invalidElem = uint32((1 << 32) - 1)
-
 // NewStringCache creates a cache for string objects that will hold no-more
 // than 'size' strings.
 func NewStringCache(size int) *StringCache {
+	if size > maxLRUSize || size <= 0 {
+		panic("size must not be <= 0 or >= 2^32")
+	}
 	cache := &StringCache{
 		maxSize: size,
-	}
-	if size > 1<<32 {
-		// maxSize cannot be > 2**32
-		panic("cannot set maxSize bigger than an unsigned 32bit integer")
 	}
 	cache.init()
 	return cache

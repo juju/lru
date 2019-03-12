@@ -37,9 +37,8 @@ func New(size int) *LRU {
 		initialBufSize = 101
 	}
 	lru := &LRU{
-		size:    0,
-		maxSize: size,
-		// TODO: dynamically allocate the size array
+		size:     0,
+		maxSize:  size,
 		buf:      make([]cacheEntry, initialBufSize),
 		elements: make(map[interface{}]uint32, initialBufSize),
 	}
@@ -71,6 +70,9 @@ func (lru *LRU) Add(key, value interface{}) {
 			}
 		} else {
 			// reuse the least recently used element
+			// Note: if we ever support Remove(), we can keep the 'removed'
+			// items on a separate linked list of locations that are available.
+			// Still allowing us to avoid allocating/freeing records frequently.
 			elem = lru.root.prev
 			delete(lru.elements, lru.buf[elem].key)
 		}
