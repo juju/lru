@@ -22,13 +22,17 @@ type StringCache struct {
 	size      int
 	hitCount  int64
 	missCount int64
-	root      stringElem
-	values    map[string]*stringElem
+	buf       []stringElem
+	values    map[string]uint32
+	root      *stringElem
 }
 
 // NewStringCache creates a cache for string objects that will hold no-more
 // than 'size' strings.
 func NewStringCache(size int) *StringCache {
+	if size > maxLRUSize || size <= 0 {
+		panic("size must not be <= 0 or >= 2^32")
+	}
 	cache := &StringCache{
 		maxSize: size,
 	}
@@ -46,14 +50,20 @@ func NewStringCache(size int) *StringCache {
 // instead replacing the content when the old value is expired.
 type stringElem struct {
 	value      string
-	prev, next *stringElem
+	prev, next uint32
 }
 
 func (sc *StringCache) init() {
-	sc.values = make(map[string]*stringElem, sc.maxSize)
-	sc.root.prev = &sc.root
-	sc.root.next = &sc.root
+	initialSize := sc.maxSize + 1
+	if initialSize > 100 {
+		initialSize = 101
+	}
+	sc.values = make(map[string]uint32, initialSize)
+	sc.buf = make([]stringElem, initialSize)
 	sc.size = 0
+	sc.root = &sc.buf[0]
+	sc.root.next = 0
+	sc.root.prev = 0
 }
 
 // Len returns how many strings are currently cached
@@ -75,46 +85,39 @@ func (sc *StringCache) HitCounts() HitCounts {
 	}
 }
 
-// realloc creates a slice of memory, and puts everything in order and
-// simplifies the pointers.  This allocates into a single slab of memory,
-// instead of being scattered around everywhere. We call this once our cache is
-// full, and we know we won't be allocating any more elements.
-func (sc *StringCache) realloc() {
-	buff := make([]stringElem, sc.maxSize)
-	cur := sc.root.next
-	for i := 0; i < sc.maxSize; i++ {
-		buff[i].value = cur.value
-		if i > 0 {
-			buff[i].prev = &buff[i-1]
-		}
-		if i < sc.maxSize-1 {
-			buff[i].next = &buff[i+1]
-		}
-		sc.values[cur.value] = &buff[i]
-		cur = cur.next
-	}
-	sc.root.next = &buff[0]
-	sc.root.prev = &buff[sc.maxSize-1]
-	buff[0].prev = &sc.root
-	buff[sc.maxSize-1].next = &sc.root
-}
-
 // Validate checks invariants to make sure the double-linked list is properly
 // linked, and that the values map to the correct element.
 func (sc *StringCache) Validate() error {
 	count := 0
-	for cur := sc.root.next; cur != &sc.root; cur = cur.next {
+	if sc.root != &sc.buf[0] {
+		return fmt.Errorf("error, root=%p, not buf[0]=%p", sc.root, &sc.buf[0])
+	}
+	for cur := sc.root.next; cur != 0; cur = sc.buf[cur].next {
 		count++
-		if cur.prev.next != cur {
-			return fmt.Errorf("error at %#v, the value after prev is not this", cur)
+		curS := &sc.buf[cur]
+		if curS.prev > uint32(len(sc.buf)) {
+			return fmt.Errorf("error at %#v, the value prev %d > len(buf) %d", curS, curS.prev, len(sc.buf))
 		}
-		if cur.next.prev != cur {
-			return fmt.Errorf("error at %#v, the value before next is not this", cur)
+		prev := &sc.buf[curS.prev]
+		if prev.next != cur {
+			return fmt.Errorf("error at %#v, the prev.next (%d) is not this %d", curS, prev.next, cur)
 		}
-		v := cur.value
+		if curS.next > uint32(len(sc.buf)) {
+			return fmt.Errorf("error at %#v, the value next %d > len(buf) %d", curS, curS.next, len(sc.buf))
+		}
+		next := &sc.buf[curS.next]
+		if next.prev != cur {
+			return fmt.Errorf("error at %#v, the next.prev (%d) is not this %d", curS, next.prev, cur)
+		}
+		v := curS.value
 		if sc.values[v] != cur {
-			return fmt.Errorf("error at %q, %p %# v, the map doesn't point to cur it points to: %p %# v",
-				v, cur, cur, sc.values[v], sc.values[v])
+			if sc.values[v] > uint32(len(sc.buf)) {
+				return fmt.Errorf("error at %q, %d %# v, the map doesn't point to cur it points to: %d (outside of buf)",
+					v, cur, curS, sc.values[v])
+			} else {
+				return fmt.Errorf("error at %q, %d %# v, the map doesn't point to cur it points to: %d %# v",
+					v, cur, curS, sc.values[v], sc.buf[sc.values[v]])
+			}
 		}
 	}
 	if count != sc.size {
@@ -126,30 +129,46 @@ func (sc *StringCache) Validate() error {
 	return nil
 }
 
+func (sc *StringCache) realloc(nextSize int) {
+	if nextSize == 0 {
+		// We save 1 slot at the beginning for root, this makes 'offset = 0' an invalid value
+		// which makes debugging much easier, and we need start and end pointers anyway.
+		nextSize = (len(sc.buf) - 1) * 2
+		if nextSize > sc.maxSize {
+			nextSize = sc.maxSize
+		}
+		nextSize++ // reserve root = buf[0]
+	}
+	newBuf := make([]stringElem, nextSize)
+	copy(newBuf, sc.buf)
+	sc.buf = newBuf
+	sc.root = &newBuf[0]
+}
+
 // Intern takes a string, and returns either the cached copy of the string, or
 // caches the string and returns it back.  It also updates how recently the
 // string was seen, so that strings aren't cached forever.
 func (sc *StringCache) Intern(v string) string {
 	if elem, ok := sc.values[v]; ok {
 		sc.moveToFront(elem)
-		v := elem.value
+		value := sc.buf[elem].value
 		sc.hitCount++
-		return v
+		return value
 	}
 	sc.missCount++
-	var elem *stringElem
+	var elem uint32
 	if sc.size < sc.maxSize {
-		elem = &stringElem{value: v}
 		sc.size++
-		if sc.size == sc.maxSize {
-			sc.moveToFront(elem)
-			sc.realloc()
-			return v
+		elem = uint32(sc.size)
+		if sc.size >= len(sc.buf) {
+			sc.realloc(0)
 		}
+		sc.buf[elem].value = v
 	} else {
 		elem = sc.root.prev
-		delete(sc.values, elem.value)
-		elem.value = v
+		e := &sc.buf[elem]
+		delete(sc.values, e.value)
+		e.value = v
 	}
 	sc.moveToFront(elem)
 	sc.values[v] = elem
@@ -163,19 +182,32 @@ func (sc *StringCache) Contains(v string) bool {
 	return ok
 }
 
-func (sc *StringCache) moveToFront(elem *stringElem) {
+func (sc *StringCache) moveToFront(elem uint32) {
 	if sc.root.next == elem {
 		// we're already at the front
 		return
 	}
-	if elem.prev != nil {
+	e := &sc.buf[elem]
+	if e.prev != 0 {
 		// remove it from its current spot
-		elem.prev.next = elem.next
-		elem.next.prev = elem.prev
+		sc.buf[e.prev].next = e.next
+		sc.buf[e.next].prev = e.prev
 	}
 	next := sc.root.next
+	e.prev = 0
+	e.next = next
 	sc.root.next = elem
-	elem.prev = &sc.root
-	elem.next = next
-	next.prev = elem
+	sc.buf[next].prev = elem
+}
+
+// Prealloc allocates a maxSize buffer immediately, rather than slowly growing
+// the buffer to maxSize. If you know that you need the full buffer size, this
+// can make initial loading of the buffer 2-3x faster.
+func (sc *StringCache) Prealloc() {
+	values := make(map[string]uint32, sc.maxSize)
+	for k, v := range sc.values {
+		values[k] = v
+	}
+	sc.values = values
+	sc.realloc(sc.maxSize + 1)
 }

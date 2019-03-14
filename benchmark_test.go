@@ -12,86 +12,92 @@ import (
 	"github.com/juju/lru"
 )
 
-type BenchmarkSuite struct{}
+type BenchmarkLRUSuite struct{}
 
-var _ = gc.Suite(&BenchmarkSuite{})
+var _ = gc.Suite(&BenchmarkLRUSuite{})
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0000010(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0000010(c *gc.C) {
 	benchAddAndEvictInt(c, 10)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0000020(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0000020(c *gc.C) {
 	benchAddAndEvictInt(c, 20)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0000050(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0000050(c *gc.C) {
 	benchAddAndEvictInt(c, 50)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0000100(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0000100(c *gc.C) {
 	benchAddAndEvictInt(c, 100)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0000200(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0000200(c *gc.C) {
 	benchAddAndEvictInt(c, 200)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0000500(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0000500(c *gc.C) {
 	benchAddAndEvictInt(c, 500)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0001000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0001000(c *gc.C) {
 	benchAddAndEvictInt(c, 1000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0002000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0002000(c *gc.C) {
 	benchAddAndEvictInt(c, 2000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0005000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0005000(c *gc.C) {
 	benchAddAndEvictInt(c, 5000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0010000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0010000(c *gc.C) {
 	benchAddAndEvictInt(c, 10000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0020000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0020000(c *gc.C) {
 	benchAddAndEvictInt(c, 20000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0050000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0050000(c *gc.C) {
 	benchAddAndEvictInt(c, 50000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0100000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0100000(c *gc.C) {
 	benchAddAndEvictInt(c, 100000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0200000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0200000(c *gc.C) {
 	benchAddAndEvictInt(c, 200000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt0500000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt0500000(c *gc.C) {
 	benchAddAndEvictInt(c, 500000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt1000000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt1000000(c *gc.C) {
 	benchAddAndEvictInt(c, 1000000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictInt2000000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictInt2000000(c *gc.C) {
 	benchAddAndEvictInt(c, 2000000)
 }
 
-func (*BenchmarkSuite) BenchmarkIntMemSize(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkIntMemSize(c *gc.C) {
+	keys := make([]int, c.N)
+	for i := 0; i < c.N; i++ {
+		keys[i] = i + 1e7
+	}
+	c.ResetTimer()
+	rand.Shuffle(c.N, func(i, j int) { keys[j], keys[i] = keys[i], keys[j] })
 	cache := lru.New(c.N)
 	for i := 0; i < c.N; i++ {
-		cache.Add(i, i)
+		cache.Add(keys[i], i)
 	}
 }
 
-func (*BenchmarkSuite) BenchmarkStrMemSize(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkStrMemSize(c *gc.C) {
 	keys := make([]string, c.N)
 	for i := 0; i < c.N; i++ {
 		keys[i] = fmt.Sprint(i + 1e7)
@@ -122,71 +128,71 @@ func benchAddAndEvictInt(c *gc.C, size int) {
 	c.Assert(cache.Len(), gc.Equals, expectLen)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0000010(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0000010(c *gc.C) {
 	benchGet(c, 10)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0000020(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0000020(c *gc.C) {
 	benchGet(c, 20)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0000050(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0000050(c *gc.C) {
 	benchGet(c, 50)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0000100(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0000100(c *gc.C) {
 	benchGet(c, 100)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0000200(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0000200(c *gc.C) {
 	benchGet(c, 200)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0000500(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0000500(c *gc.C) {
 	benchGet(c, 500)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0001000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0001000(c *gc.C) {
 	benchGet(c, 1000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0002000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0002000(c *gc.C) {
 	benchGet(c, 2000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0005000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0005000(c *gc.C) {
 	benchGet(c, 5000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0010000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0010000(c *gc.C) {
 	benchGet(c, 10000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0020000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0020000(c *gc.C) {
 	benchGet(c, 20000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0050000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0050000(c *gc.C) {
 	benchGet(c, 50000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0100000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0100000(c *gc.C) {
 	benchGet(c, 100000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0200000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0200000(c *gc.C) {
 	benchGet(c, 200000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet0500000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet0500000(c *gc.C) {
 	benchGet(c, 500000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet1000000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet1000000(c *gc.C) {
 	benchGet(c, 1000000)
 }
 
-func (*BenchmarkSuite) BenchmarkGet2000000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkGet2000000(c *gc.C) {
 	benchGet(c, 2000000)
 }
 
@@ -205,71 +211,71 @@ func benchGet(c *gc.C, size int) {
 	}
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0000010(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0000010(c *gc.C) {
 	benchAddAndEvictStr(c, 10)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0000020(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0000020(c *gc.C) {
 	benchAddAndEvictStr(c, 20)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0000050(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0000050(c *gc.C) {
 	benchAddAndEvictStr(c, 50)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0000100(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0000100(c *gc.C) {
 	benchAddAndEvictStr(c, 100)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0000200(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0000200(c *gc.C) {
 	benchAddAndEvictStr(c, 200)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0000500(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0000500(c *gc.C) {
 	benchAddAndEvictStr(c, 500)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0001000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0001000(c *gc.C) {
 	benchAddAndEvictStr(c, 1000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0002000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0002000(c *gc.C) {
 	benchAddAndEvictStr(c, 2000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0005000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0005000(c *gc.C) {
 	benchAddAndEvictStr(c, 5000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0010000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0010000(c *gc.C) {
 	benchAddAndEvictStr(c, 10000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0020000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0020000(c *gc.C) {
 	benchAddAndEvictStr(c, 20000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0050000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0050000(c *gc.C) {
 	benchAddAndEvictStr(c, 50000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0100000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0100000(c *gc.C) {
 	benchAddAndEvictStr(c, 100000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0200000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0200000(c *gc.C) {
 	benchAddAndEvictStr(c, 200000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr0500000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr0500000(c *gc.C) {
 	benchAddAndEvictStr(c, 500000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr1000000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr1000000(c *gc.C) {
 	benchAddAndEvictStr(c, 1000000)
 }
 
-func (*BenchmarkSuite) BenchmarkAddAndEvictStr2000000(c *gc.C) {
+func (*BenchmarkLRUSuite) BenchmarkAddAndEvictStr2000000(c *gc.C) {
 	benchAddAndEvictStr(c, 2000000)
 }
 
